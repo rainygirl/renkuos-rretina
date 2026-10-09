@@ -21,11 +21,12 @@ the size changes. These patches fix those two things.
 | --- | --- |
 | `0001-app-server-dpi-ui-scale` | With no font sizes chosen, app_server picked the UI scale from the resolution alone (x1.5 above 1920x1080, x2 above 3840x2160). It now uses the panel's pixel density from EDID: `dpi / 110`, in quarter steps from 1 to 3. A 27" 2560x1440 monitor stays at 1 (it got 1.5), a 13" 2560x1600 laptop panel gets 2 (it got 1.5), a 15" 4K panel 2.5. No EDID: the resolution rule as before, now inclusive of 3840x2160. The choice is logged to the syslog. |
 | `0002-tracker-desktop-location-scale` | Desktop icon positions are saved in pixels, so after the scale grows the icons pile onto each other with overlapping labels. Tracker now records the scale the positions were saved under (`_trk/pinfo_scale` on the desktop directory) and scales them to the current one when it loads them. |
+| `0003-ui-scale-setting` | Appearance's Fonts tab gets a "UI scale" menu: Automatic, 100%, 150%, 200%. The fixed choices size the four system fonts to 12, 18 and 24 pt. Automatic sizes them by the display (as 0001) and leaves `auto` in `~/config/settings/system/app_server/ui_scale`, so app_server re-picks the scale on every boot whatever sizes were saved. Changing a font size by hand ends Automatic; sizes matching no choice show as "Custom". |
 
 ## How the package works
 
-`rretina` contains `servers/app_server` and `lib/libtracker.so`, the same
-paths the `haiku` package has. Where several packages provide one path,
+`rretina` contains `servers/app_server`, `lib/libtracker.so` and
+`preferences/Appearance`, the same paths the `haiku` package has. Where several packages provide one path,
 packagefs shows a system package's file over another package's, and among
 system packages the one with the newest modification time. `rretina` is
 therefore flagged `system_package` and its two files are stamped when the
@@ -75,6 +76,13 @@ put the patched files in place (md5 of `/boot/system/servers/app_server` and
 `shutdown -r` into the patched app_server, Tracker and Deskbar; `pkgman
 uninstall rretina` restored the stock md5s at once and the next boot ran the
 stock app_server.
+
+UI scale (0003, rretina 1.0.0-2): on the arm64 test VM, choosing Automatic
+wrote `auto` and set 12 pt (QEMU's 100 dpi); with 24 pt then saved and a
+reboot, app_server logged "UI scale 1.00" and the desktop came back at 1x
+with its icons moved to the 1x grid. In a QEMU window on the Mac
+(`-display cocoa`, `virtio-gpu-pci,xres=2560,yres=1600`) QEMU reports a
+51x32 cm display; with no sizes chosen app_server picked 1.25.
 
 ## Known, not fixed here
 
