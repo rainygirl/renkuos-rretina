@@ -1,7 +1,14 @@
 # renku-retina
 
 HiDPI ("Retina") patches for RenkuOS, x86_64 and arm64. They apply to
-RenkuOS/Source (`main` and `nightly` as of 2026-10-09) with `git apply`.
+RenkuOS/Source (`main` and `nightly` as of 2026-10-09) with `git apply`, and
+ship as the package **R Retina** (`rretina`) on pkgman.rainygirl.com, so an
+installed system gets them without a new image:
+
+```sh
+pkgman install rretina    # then reboot
+pkgman uninstall rretina  # then reboot; the stock files are back
+```
 
 Haiku already scales almost everything by the default font size: controls,
 spacing, window borders, scroll bars, menu and list icons, Deskbar, and the
@@ -15,6 +22,35 @@ the size changes. These patches fix those two things.
 | `0001-app-server-dpi-ui-scale` | With no font sizes chosen, app_server picked the UI scale from the resolution alone (x1.5 above 1920x1080, x2 above 3840x2160). It now uses the panel's pixel density from EDID: `dpi / 110`, in quarter steps from 1 to 3. A 27" 2560x1440 monitor stays at 1 (it got 1.5), a 13" 2560x1600 laptop panel gets 2 (it got 1.5), a 15" 4K panel 2.5. No EDID: the resolution rule as before, now inclusive of 3840x2160. The choice is logged to the syslog. |
 | `0002-tracker-desktop-location-scale` | Desktop icon positions are saved in pixels, so after the scale grows the icons pile onto each other with overlapping labels. Tracker now records the scale the positions were saved under (`_trk/pinfo_scale` on the desktop directory) and scales them to the current one when it loads them. |
 
+## How the package works
+
+`rretina` contains `servers/app_server` and `lib/libtracker.so`, the same
+paths the `haiku` package has. Where several packages provide one path,
+packagefs shows a system package's file over another package's, and among
+system packages the one with the newest modification time. `rretina` is
+therefore flagged `system_package` and its two files are stamped when the
+package is built. While it is installed they are the system's; removing it
+brings the `haiku` package's files back at once, and a later `haiku` package
+(newer files) would win over it. No install scripts, launch overrides or
+packagefs settings are involved.
+
+The binaries use private interfaces of `libbe` and `app_server`, so the
+package requires the exact `haiku` version they were built for
+(`r1~beta6_hrev60071_15_dirty`, RenkuOS `nightly` 47367b99ab). Build it with
+`package/make-rretina.sh <arch> <haiku version>` from `dist/<arch>/`.
+
+Two other routes were tried and dropped:
+- Install scripts that copy the binaries to the non-packaged directories,
+  hide the system libtracker with `BlockedEntries` and redirect the
+  app_server launch job. Removing that package left the redirection in
+  place: package_daemon moves a package file away before it runs the
+  package's pre-uninstall scripts, so they cannot be read and never run
+  (syslog: `Failed to open package file`, then the script fails with 127).
+  The same affects every package's pre-uninstall script on this tree.
+- Starting app_server through a shell wrapper (`exec`): app_server came up
+  with 4 threads and no client could connect ("You need to have a valid
+  app_server connection first!").
+
 ## Verified
 
 On the RENKU arm64 VM at 2560x1600 (QEMU `virtio-gpu-pci,xres=2560,yres=1600`),
@@ -27,7 +63,18 @@ with the patched `app_server` and `libtracker.so` built from the arm64 tree:
   2x grid cells instead of overlapping, the attribute records 2.0, and a
   restart does not scale them a second time.
 
-x86_64 has not been built or run yet; the changes are architecture-neutral.
+x86_64: RenkuOS `nightly` built with both patches (`@nightly-anyboot`) and
+booted in QEMU (`virtio-vga,xres=2560,yres=1600`, TCG) on the Mac mini: the
+same 1x decision from QEMU's EDID; at 24 pt five desktop items saved at 1x
+moved to exactly twice their coordinates, `_trk/pinfo_scale` became 2.0, and
+further restarts left the attributes byte-identical.
+
+Package: on the arm64 VM, `pkgman install rretina` from pkgman.rainygirl.com
+put the patched files in place (md5 of `/boot/system/servers/app_server` and
+`/boot/system/lib/libtracker.so` changed at once), the system rebooted with
+`shutdown -r` into the patched app_server, Tracker and Deskbar; `pkgman
+uninstall rretina` restored the stock md5s at once and the next boot ran the
+stock app_server.
 
 ## Known, not fixed here
 
