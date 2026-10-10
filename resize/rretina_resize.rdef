@@ -1,2 +1,2 @@
-resource app_signature "application/x-vnd.renku-rretina-resize";
+resource app_signature "application/x-vnd.rretina";
 resource app_flags B_BACKGROUND_APP | B_EXCLUSIVE_LAUNCH;

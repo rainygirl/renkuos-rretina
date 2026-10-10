@@ -43,7 +43,7 @@ class ResizeApp : public BApplication {
 public:
 	ResizeApp()
 		:
-		BApplication("application/x-vnd.renku-rretina-resize"),
+		BApplication("application/x-vnd.rretina"),
 		fDevice(-1),
 		fRunner(NULL),
 		fCandidateWidth(0),
