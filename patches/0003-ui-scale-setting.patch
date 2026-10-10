@@ -14,6 +14,9 @@ goes to ~/config/settings/rretina_resize as host_scale (1 for Automatic), so
 on QEMU's virtio-gpu the screen follows the host window at that many pixels
 per point - sharp on a Retina Mac. Afterwards Screen offers to restart
 Tracker and Deskbar so the desktop picks the new size up at once.
+The Screen window also follows a mode change it did not make (the resize
+helper following a QEMU window): its resolution menu and monitor view show
+the new mode, which also becomes the one Revert goes back to.
 
 diff -ru b/src/preferences/screen/Constants.h c2/src/preferences/screen/Constants.h
 --- b/src/preferences/screen/Constants.h	2026-10-10 13:09:29
@@ -28,7 +31,7 @@ diff -ru b/src/preferences/screen/Constants.h c2/src/preferences/screen/Constant
  extern const char* kBackgroundsSignature;
 diff -ru b/src/preferences/screen/ScreenWindow.cpp c2/src/preferences/screen/ScreenWindow.cpp
 --- b/src/preferences/screen/ScreenWindow.cpp	2026-10-10 13:09:29
-+++ c2/src/preferences/screen/ScreenWindow.cpp	2026-10-10 13:11:18
++++ c2/src/preferences/screen/ScreenWindow.cpp	2026-10-10 15:03:53
 @@ -17,10 +17,14 @@
  
  #include "ScreenWindow.h"
@@ -221,7 +224,26 @@ diff -ru b/src/preferences/screen/ScreenWindow.cpp c2/src/preferences/screen/Scr
  	_UpdateMonitor();
  
  	MoveOnScreen();
-@@ -1218,6 +1371,14 @@
+@@ -1001,6 +1154,18 @@
+ 		MoveTo((frame.Width() - Frame().Width()) / 2,
+ 			(frame.Height() - Frame().Height()) / 2);
+ 	}
++
++	// The mode can change without us: rretina_resize follows the QEMU window
++	// it runs in. (Our own _Apply() has set fActive by the time this
++	// arrives.) Show what the screen has now, and take it as the mode to
++	// revert to - reverting to the old one would only fight the window.
++	if ((int32)frame.IntegerWidth() + 1 != fActive.width
++		|| (int32)frame.IntegerHeight() + 1 != fActive.height) {
++		fScreenMode.UpdateOriginalModes();
++		_UpdateActiveMode();
++		fScreenMode.Get(fOriginal);
++		_CheckApplyEnabled();
++	}
+ }
+ 
+ 
+@@ -1218,6 +1383,14 @@
  			_Apply();
  			break;
  
@@ -236,7 +258,7 @@ diff -ru b/src/preferences/screen/ScreenWindow.cpp c2/src/preferences/screen/Scr
  		case MAKE_INITIAL_MSG:
  			// user pressed "keep" in confirmation dialog
  			fModified = true;
-@@ -1463,5 +1624,76 @@
+@@ -1463,5 +1636,76 @@
  			B_WIDTH_AS_USUAL, B_WARNING_ALERT);
  		alert->SetFlags(alert->Flags() | B_CLOSE_ON_ESCAPE);
  		alert->Go();
