@@ -29,17 +29,32 @@ shutdown -r
 `rretina` requires RenkuOS `r1~beta6_hrev60071_15_dirty` (the `nightly`
 image of 2026-10-09); pkgman refuses it on any other `haiku` version.
 
-**Web pages at the UI scale (arm64).** WebPositive draws pages through
-HaikuWebKit, which is its own package, so the page zoom fix ships as
-`haikuwebkit` 1.10.0-6 in the WebPositive repository, not in `rretina`:
+### Web pages need the patched HaikuWebKit
+
+`rretina` scales the system - controls, windows, icons, the cursor - but
+not web pages: WebPositive and every other WebKit application draw pages
+through **HaikuWebKit**, a separate package, and stock HaikuWebKit always
+shows a page at one CSS pixel per screen pixel. At 200% that is a page at
+half the size of the window around it.
+
+On arm64, use **haikuwebkit 1.10.0-6** from the WebPositive repository on
+pkgman.rainygirl.com. It carries the UI-scale patch: a page's default zoom
+is the UI scale, applied when the page loads, and zooming in, out and back
+to normal works around it.
 
 ```sh
 pkgman add-repo https://pkgman.rainygirl.com/arm64-webpositive
-pkgman update haikuwebkit
+pkgman update haikuwebkit      # 1.10.0-6 or later; then restart WebPositive
 ```
 
+The patch is part of `haikuwebkit-1.10.0-arm64.patch` in
+[haiku-rwebpositive-arm64](https://github.com/rainygirl/haiku-rwebpositive-arm64)
+(the change alone: `patches/haikuwebkit-1.10.0-ui-scale.patch` here). 1.10.0-6
+also drops the debug logging that made the earlier 1.10.0-3 slow enough to
+stop responding on pages like google.com.
+
 On x86_64 WebPositive uses HaikuPorts' HaikuWebKit, which does not have the
-fix yet: pages there stay at 1x.
+patch yet: pages there stay at 1x.
 
 **QEMU on a Retina Mac.** Start QEMU with
 `-display cocoa,zoom-to-fit=on -device virtio-gpu-pci` and choose 200% in
