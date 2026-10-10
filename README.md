@@ -1,14 +1,52 @@
 # renku-retina
 
-HiDPI ("Retina") patches for RenkuOS, x86_64 and arm64. They apply to
-RenkuOS/Source (`main` and `nightly` as of 2026-10-09) with `git apply`, and
-ship as the package **R Retina** (`rretina`) on pkgman.rainygirl.com, so an
-installed system gets them without a new image:
+HiDPI ("Retina") support for RenkuOS, x86_64 and arm64: the user interface
+scale follows the display, can be chosen in the Screen preferences
+(Automatic, 100%, 150%, 200%), desktop icons keep their places when it
+changes, and in QEMU the screen follows the window - sharp on a Retina Mac.
+
+![Screen preferences with UI scale 200% in a QEMU window on a Retina Mac](screenshots/screen-ui-scale.png)
+
+## Installing with pkgman
+
+R Retina is the package `rretina` on pkgman.rainygirl.com. Add the
+repository for your architecture once, then install it and reboot:
 
 ```sh
-pkgman install rretina    # then reboot
-pkgman uninstall rretina  # then reboot; the stock files are back
+pkgman add-repo https://pkgman.rainygirl.com/arm64    # or .../x86_64
+pkgman install rretina
+shutdown -r
 ```
+
+Then pick the scale in **Preferences > Screen > UI scale**. To go back to
+the stock system:
+
+```sh
+pkgman uninstall rretina
+shutdown -r
+```
+
+`rretina` requires RenkuOS `r1~beta6_hrev60071_15_dirty` (the `nightly`
+image of 2026-10-09); pkgman refuses it on any other `haiku` version.
+
+**Web pages at the UI scale (arm64).** WebPositive draws pages through
+HaikuWebKit, which is its own package, so the page zoom fix ships as
+`haikuwebkit` 1.10.0-6 in the WebPositive repository, not in `rretina`:
+
+```sh
+pkgman add-repo https://pkgman.rainygirl.com/arm64-webpositive
+pkgman update haikuwebkit
+```
+
+On x86_64 WebPositive uses HaikuPorts' HaikuWebKit, which does not have the
+fix yet: pages there stay at 1x.
+
+**QEMU on a Retina Mac.** Start QEMU with
+`-display cocoa,zoom-to-fit=on -device virtio-gpu-pci` and choose 200% in
+Screen: Haiku then draws twice the window's size in points, one pixel per
+physical pixel.
+
+## How it works
 
 Haiku already scales almost everything by the default font size: controls,
 spacing, window borders, scroll bars, menu and list icons, Deskbar, and the
