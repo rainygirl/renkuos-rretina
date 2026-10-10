@@ -1,0 +1,157 @@
+Subject: [PATCH] HaikuWebKit: show pages at the UI scale (haikuwebkit 1.10.0-6, arm64)
+
+Applies on top of rwebpositive-arm64's haikuwebkit-1.10.0-arm64.patch.
+
+With the system fonts at 200% (Screen's UI scale) every control doubles
+but web pages stayed at one CSS pixel per screen pixel: Google at half the
+size of everything around it. BWebFrame's default zoom is now the UI scale
+(the default font size over 12 pt). It is applied when the main frame
+commits its first document - WebCore ignores a page zoom set before there
+is a document - and carries over to later ones. Zoom in/out step around it
+and "reset" returns to it; the text zoom is kept relative to it, since
+WebCore multiplies it on top of the page zoom.
+
+--- a/Source/WebKitLegacy/haiku/API/WebFrame.cpp
++++ b/Source/WebKitLegacy/haiku/API/WebFrame.cpp
+@@ -67,17 +67,35 @@
+ #include <wtf/text/CString.h>
+ 
+ #include <Entry.h>
++#include <Font.h>
+ #include <String.h>
+ 
++#include <algorithm>
++
+ static const float kMinimumZoomFactorMultiplier = 0.5;
+ static const float kMaximumZoomFactorMultiplier = 3;
+ static const float kZoomFactorMultiplierRatio = 1.1;
+ 
++
++/*!	The zoom a page is shown at by default: the UI scale, which Haiku keeps
++	as the default font size over its 12 pt base. On a HiDPI screen with the
++	fonts at 200% a CSS pixel is then two screen pixels, like the rest of the
++	system, instead of a page at half size. The zoom steps and their limits
++	are relative to it.
++*/
++static float
++default_zoom_factor()
++{
++	if (be_plain_font == NULL)
++		return 1.0f;
++	return std::max(1.0f, be_plain_font->Size() / 12.0f);
++}
++
+ using namespace WebCore;
+ 
+ BWebFrame::BWebFrame(BWebPage* webPage, BWebFrame* parentFrame,
+         WebFramePrivate* data)
+-    : fZoomFactor(1.0)
++    : fZoomFactor(default_zoom_factor())
+     , fIsEditable(false)
+     , fTitle(0)
+     , fData(data)
+@@ -91,6 +109,8 @@
+ 		client.setFrame(this);
+         fData->frame->init();
+         fData->frame->tree().setSpecifiedName(fData->name);
++        // the page zoom is applied once there is a document, in
++        // FrameLoaderClientHaiku::dispatchDidCommitLoad()
+     } else {
+         // Will be initialized in BWebFrame::AddChild
+     }
+@@ -327,7 +347,8 @@
+ bool BWebFrame::CanIncreaseZoomFactor() const
+ {
+     if (fData->frame) {
+-        if (fZoomFactor * kZoomFactorMultiplierRatio <= kMaximumZoomFactorMultiplier)
++        if (fZoomFactor * kZoomFactorMultiplierRatio
++                <= kMaximumZoomFactorMultiplier * default_zoom_factor())
+             return true;
+     }
+ 
+@@ -337,7 +358,8 @@
+ bool BWebFrame::CanDecreaseZoomFactor() const
+ {
+     if (fData->frame)
+-        return fZoomFactor / kZoomFactorMultiplierRatio >= kMinimumZoomFactorMultiplier;
++        return fZoomFactor / kZoomFactorMultiplierRatio
++            >= kMinimumZoomFactorMultiplier * default_zoom_factor();
+ 
+     return false;
+ }
+@@ -347,9 +369,11 @@
+     if (CanIncreaseZoomFactor()) {
+         fZoomFactor = fZoomFactor * kZoomFactorMultiplierRatio;
+         if (textOnly)
+-            fData->frame->setTextZoomFactor(fZoomFactor);
+-        else
+-            fData->frame->setPageAndTextZoomFactors(fZoomFactor, fZoomFactor);
++            fData->frame->setTextZoomFactor(fZoomFactor / default_zoom_factor());
++        else {
++            fData->frame->setPageAndTextZoomFactors(fZoomFactor,
++                fZoomFactor / default_zoom_factor());
++        }
+     }
+ }
+ 
+@@ -358,21 +382,23 @@
+     if (CanDecreaseZoomFactor()) {
+         fZoomFactor = fZoomFactor / kZoomFactorMultiplierRatio;
+         if (textOnly)
+-            fData->frame->setTextZoomFactor(fZoomFactor);
+-        else
+-            fData->frame->setPageAndTextZoomFactors(fZoomFactor, fZoomFactor);
++            fData->frame->setTextZoomFactor(fZoomFactor / default_zoom_factor());
++        else {
++            fData->frame->setPageAndTextZoomFactors(fZoomFactor,
++                fZoomFactor / default_zoom_factor());
++        }
+     }
+ }
+ 
+ void BWebFrame::ResetZoomFactor()
+ {
+-    if (fZoomFactor == 1)
++    if (fZoomFactor == default_zoom_factor())
+         return;
+ 
+-    fZoomFactor = 1;
++    fZoomFactor = default_zoom_factor();
+ 
+     if (fData->frame)
+-        fData->frame->setPageAndTextZoomFactors(fZoomFactor, fZoomFactor);
++        fData->frame->setPageAndTextZoomFactors(fZoomFactor, 1);
+ }
+ 
+ void BWebFrame::SetEditable(bool editable)
+--- a/Source/WebKitLegacy/haiku/WebCoreSupport/FrameLoaderClientHaiku.cpp
++++ b/Source/WebKitLegacy/haiku/WebCoreSupport/FrameLoaderClientHaiku.cpp
+@@ -76,6 +76,8 @@
+ #include "WebView.h"
+ #include "WebViewConstants.h"
+ 
++#include <Font.h>
++#include <algorithm>
+ #include <JavaScriptCore/APICast.h>
+ #include <JavaScriptCore/JSContextRef.h>
+ #include <wtf/CompletionHandler.h>
+@@ -450,6 +452,19 @@
+         return;
+     }
+ 
++    // Show the page at the UI scale (BWebFrame's default zoom, the default
++    // font size over 12 pt). It can only be set once the frame has a
++    // document, which is now; it then carries over to later documents.
++    if (m_webPage != nullptr && m_webFrame == m_webPage->MainFrame()) {
++        WebCore::LocalFrame* frame = m_webFrame->Frame();
++        const float scale = be_plain_font != NULL
++            ? std::max(1.0f, be_plain_font->Size() / 12.0f) : 1.0f;
++        if (frame != nullptr && scale != 1.0f
++            && frame->pageZoomFactor() == 1.0f
++            && m_webFrame->fZoomFactor == scale)
++            frame->setPageAndTextZoomFactors(scale, frame->textZoomFactor());
++    }
++
+     BMessage message(LOAD_COMMITTED);
+     URL url = m_webFrame->Frame()->loader().documentLoader()->request().url();
+     BUrl decoded(url);

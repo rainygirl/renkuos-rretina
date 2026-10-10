@@ -153,6 +153,9 @@ private:
 			width = (uint32)(width * scale);
 			height = (uint32)(height * scale);
 		}
+		width &= ~7u;
+			// app_server's frame buffer rows must be a multiple of 8 pixels:
+			// 2298 pixels wide drew every row shifted (a sheared screen)
 		if (width < 640 || height < 400)
 			return;
 
