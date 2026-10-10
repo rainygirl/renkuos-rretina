@@ -1,7 +1,7 @@
 #!/bin/sh
-# Builds dist/rretina-<version>-<revision>-<arch>.hpkg from
-# dist/<arch>/{app_server,libtracker.so,Appearance}, using the Linux-hosted
-# package tool of a Haiku build tree in a container.
+# Builds dist/rretina-<version>-<revision>-<arch>.hpkg from dist/<arch>/
+# (app_server, libtracker.so, Screen, virtio_gpu, rretina_resize), using
+# the Linux-hosted package tool of a Haiku build tree in a container.
 #
 #   package/make-rretina.sh <arch> <haiku version the binaries were built for>
 #   e.g. package/make-rretina.sh arm64 r1~beta6_hrev60071_15_dirty
@@ -14,7 +14,7 @@
 # would win over rretina's. The binaries use private interfaces of libbe and
 # app_server, so the package requires exactly that haiku version.
 #
-# The three files keep the attributes of the haiku package's own (app
+# The four replaced files keep the attributes of the haiku package's own (app
 # signature, type, icon): they are extracted from that package in the
 # container and the new contents written into them.
 #
@@ -50,7 +50,9 @@ STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT
 mkdir -p "$STAGE/new" "$STAGE/documentation/packages/rretina"
 cp "$HERE/dist/$ARCH/app_server" "$HERE/dist/$ARCH/libtracker.so" \
-	"$HERE/dist/$ARCH/Appearance" "$STAGE/new/"
+	"$HERE/dist/$ARCH/Screen" "$HERE/dist/$ARCH/virtio_gpu" \
+	"$HERE/dist/$ARCH/rretina_resize" "$STAGE/new/"
+cp "$HERE/resize/user_launch" "$STAGE/new/user_launch"
 cp "$HERE/README.md" "$STAGE/documentation/packages/rretina/"
 cp -R "$HERE/patches" "$STAGE/documentation/packages/rretina/"
 
@@ -59,7 +61,7 @@ name			rretina
 version			$VERSION-$REVISION
 architecture	$ARCH
 summary			"R Retina: HiDPI scaling for RenkuOS"
-description		"Picks the user interface scale from the display's pixel density (EDID) instead of the resolution alone, keeps desktop icons on their grid when the scale changes, and adds a UI scale choice (Automatic, 100%, 150%, 200%) to Appearance's Fonts tab. Replaces app_server, libtracker and Appearance of $HAIKU_VERSION while installed; reboot after installing or removing it."
+description		"Picks the user interface scale from the display's pixel density (EDID) instead of the resolution alone, keeps desktop icons on their grid when the scale changes, adds a UI scale choice (Automatic, 100%, 150%, 200%) to the Screen preferences, and on QEMU's virtio-gpu follows the size of the host window (resized or full screen, sharp on a Retina Mac at 200%). Replaces app_server, libtracker, Screen and the virtio_gpu driver of $HAIKU_VERSION while installed; reboot after installing or removing it."
 packager		"$PACKAGER"
 vendor			"$VENDOR"
 licenses		{ "MIT" }
@@ -80,13 +82,19 @@ INFO
 		export LD_LIBRARY_PATH=$LIBS
 		rm -rf $STORE; mkdir -p $STORE
 		P=$GEN/objects/linux/arm64/release/tools/package/package
+		VG=add-ons/kernel/drivers/graphics/virtio_gpu
 		\$P extract -C \$W/s $BASE servers/app_server lib/libtracker.so \
-			preferences/Appearance >&2
+			preferences/Screen \$VG >&2
 		cd \$W/s
 		cat \$W/in/new/app_server > servers/app_server
 		cat \$W/in/new/libtracker.so > lib/libtracker.so
-		cat \$W/in/new/Appearance > preferences/Appearance
-		touch servers/app_server lib/libtracker.so preferences/Appearance
+		cat \$W/in/new/Screen > preferences/Screen
+		cat \$W/in/new/virtio_gpu > \$VG
+		mkdir -p bin data/user_launch
+		cp \$W/in/new/rretina_resize bin/rretina_resize
+		chmod 755 bin/rretina_resize
+		cp \$W/in/new/user_launch data/user_launch/rretina
+		touch servers/app_server lib/libtracker.so preferences/Screen \$VG
 		cp -R \$W/in/documentation .
 		cp \$W/in/PackageInfo .PackageInfo
 		\$P create -z zlib -C \$W/s \$W/out.hpkg >&2

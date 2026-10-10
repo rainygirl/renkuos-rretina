@@ -1,0 +1,4 @@
+# rretina: follow the size of a QEMU window (virtio-gpu); quits elsewhere.
+job x-vnd.renku-rretina-resize {
+	launch /boot/system/bin/rretina_resize
+}
