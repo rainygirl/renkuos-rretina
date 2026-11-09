@@ -19,7 +19,7 @@ Dopo l'installazione riavvia il sistema, poi scegli la scala in **Preferenze > S
 
 Per tornare al sistema originale esegui `pkgman uninstall rretina` e riavvia.
 
-R Retina è fatto per RenkuOS `r1~beta6_hrev60071_15_dirty`; pkgman non lo installa su altre versioni.
+R Retina è fatto per una versione di RenkuOS alla volta: arm64 1.0.0-11 per `r1~beta6_hrev60072_578_dirty` (l'immagine 2026.11.09-2), 1.0.0-9 per `r1~beta6_hrev60071_15_dirty`. pkgman sceglie quello giusto e non lo installa su altre versioni.
 
 ## Pagine web
 

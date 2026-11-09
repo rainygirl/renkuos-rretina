@@ -21,6 +21,10 @@ it once, when app_server opened the device, so Haiku kept the boot size.
   the screen stayed black (2 of 5 boots on x86_64 with the larger frame
   buffer). It now polls the queue, sleeping on the semaphore for at most
   1 ms between polls.
+- The EDID is read again with the preferred size: QEMU derives the display's
+  physical size from its window as well, and a window that went full screen
+  after app_server opened the device left the boot window's size in the
+  EDID (2560x1664 read as 13x8 cm, 516 dpi) and the UI scale at its maximum.
 
 diff -ru c2/headers/private/graphics/virtio/virtio_info.h e/headers/private/graphics/virtio/virtio_info.h
 --- c2/headers/private/graphics/virtio/virtio_info.h	2026-10-10 13:11:18
@@ -197,7 +201,7 @@ diff -ru c2/src/add-ons/kernel/drivers/graphics/virtio/virtio_gpu.cpp e/src/add-
  	int32 result;
  	wait_for_thread(info->updateThread, &result);
  	info->updateThread = -1;
-@@ -740,6 +806,25 @@
+@@ -740,6 +806,32 @@
  
  			return virtio_gpu_set_display_mode(info, &mode);
  		}
@@ -214,6 +218,13 @@ diff -ru c2/src/add-ons/kernel/drivers/graphics/virtio/virtio_gpu.cpp e/src/add-
 +					&size.width, &size.height);
 +				if (status != B_OK)
 +					return status;
++				// The host's EDID follows its window too (QEMU derives the
++				// physical size from it), and app_server reads the size when
++				// the mode changes - which happens after this call. Read it
++				// again, or a window that went full screen after the device
++				// was opened leaves the boot window's size, and UI scale.
++				if ((info->features & VIRTIO_GPU_F_EDID) != 0)
++					virtio_gpu_get_edids(info, 0);
 +			}
 +			size.max_width = info->framebufferWidth;
 +			size.max_height = info->framebufferHeight;

@@ -19,7 +19,7 @@ Redémarrez ensuite le système, puis choisissez l'échelle dans **Préférences
 
 Pour revenir au système d'origine, lancez `pkgman uninstall rretina` et redémarrez.
 
-R Retina est conçu pour RenkuOS `r1~beta6_hrev60071_15_dirty` ; pkgman ne l'installe pas sur une autre version.
+R Retina est construit pour une version de RenkuOS à la fois : arm64 1.0.0-11 pour `r1~beta6_hrev60072_578_dirty` (l'image 2026.11.09-2), 1.0.0-9 pour `r1~beta6_hrev60071_15_dirty`. pkgman choisit celui qui convient et ne l'installe pas sur une autre version.
 
 ## Pages web
 
