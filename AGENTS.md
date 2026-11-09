@@ -59,8 +59,9 @@ The binaries use private interfaces of `libbe` and `app_server`, so the
 package requires the exact `haiku` version they were built for
 (arm64 1.0.0-11: `r1~beta6_hrev60072_578_dirty`, RenkuOS 8484655099 with the
 renkuos-arm64 patch set 0001-0024; 1.0.0-9 and x86_64: `r1~beta6_hrev60071_15_dirty`,
-RenkuOS `nightly` 47367b99ab). Keep the older revision in the repository next
-to a newer one: pkgman installs whichever matches the system. Build it with
+RenkuOS `nightly` 47367b99ab). package_repo takes one version of a package per
+repository, so pkgman.rainygirl.com's arm64 repository carries the build for
+the current image (1.0.0-11) and 1.0.0-9 is kept in superseded/. Build it with
 `package/make-rretina.sh <arch> <haiku version>` from `dist/<arch>/`.
 
 Two other routes were tried and dropped:

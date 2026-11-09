@@ -19,7 +19,7 @@ Restart the system afterwards, then choose the scale in **Preferences > Screen >
 
 To go back to the stock system, run `pkgman uninstall rretina` and restart.
 
-R Retina is built for one RenkuOS version at a time: arm64 1.0.0-11 for `r1~beta6_hrev60072_578_dirty` (the 2026.11.09-2 image), 1.0.0-9 for `r1~beta6_hrev60071_15_dirty`. pkgman picks the one that matches and installs none on other versions.
+R Retina is built for one RenkuOS version at a time: arm64 1.0.0-11 for `r1~beta6_hrev60072_578_dirty` (the 2026.11.09-2 image), 1.0.0-9 for `r1~beta6_hrev60071_15_dirty`. pkgman.rainygirl.com carries the current one; pkgman does not install it on other versions.
 
 ## Web pages
 

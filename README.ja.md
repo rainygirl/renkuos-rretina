@@ -19,7 +19,7 @@ R Retina は pkgman.rainygirl.com のパッケージ `rretina` です。
 
 元のシステムに戻すには `pkgman uninstall rretina` を実行して再起動します。
 
-R Retina は RenkuOS のバージョンごとに作られています。arm64 の 1.0.0-11 は `r1~beta6_hrev60072_578_dirty`（2026.11.09-2 イメージ）用、1.0.0-9 は `r1~beta6_hrev60071_15_dirty` 用です。pkgman が合うほうを選び、ほかのバージョンにはインストールしません。
+R Retina は RenkuOS のバージョンごとに作られています。arm64 の 1.0.0-11 は `r1~beta6_hrev60072_578_dirty`（2026.11.09-2 イメージ）用、1.0.0-9 は `r1~beta6_hrev60071_15_dirty` 用です。pkgman.rainygirl.com には現在のイメージ用があり、ほかのバージョンには pkgman がインストールしません。
 
 ## Web ページ
 
